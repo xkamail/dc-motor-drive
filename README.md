@@ -10,6 +10,9 @@
   
   select ccw, cw for m1 and m2 ( toggle switch )
   
-  short brake ( two emergency button )
+  short brake individual ( two emergency button )
+  
+  short brake all
+  
   stop and stanby
  
