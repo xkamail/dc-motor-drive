@@ -44,9 +44,9 @@ volatile MotorMode motorBBeforeBrake;
 void setup() {
   DDRD = 0b01100011;   // input internal pull-up
   PORTD = 0b10011100;  // for motor A
-  DDRB = 0b00110000;   // input internal pull-up
+  DDRB = 0b110000;    // input internal pull-up
   PORTB = 0b00001111;  // for motor B
-  DDRC = 0b111100;     // PWM analog read
+  DDRC = 0b1100;       // PWM analog read amd A3, A2
   btn2.setDebounceTime(50);
   btn8.setDebounceTime(50);
   lcd.begin();
@@ -56,9 +56,7 @@ void setup() {
   TCCR0A = _BV(WGM01) | _BV(WGM00);     // Fast PWM Mode Top=0xFF
   TCCR0A |= _BV(COM0A1) | _BV(COM0B1);  // non-inverting mode compare output
   TCCR0B |= _BV(CS01);                  // clk
-  Serial.begin(9600);                   // debug serial
-  Serial.println("Starting....");
-  delay(2000);  // wait
+  delay(2000);                          // wait
   PWMTask.start();
   BtnTask.start();
 }
@@ -80,13 +78,7 @@ void loop() {
   bool B_CW = !digitalRead(CW_B);
   bool B_CCW = !digitalRead(CCW_B);
   bool B_TOGGLE = btn8.isReleased();
-  if (B_TOGGLE || B_brake || B_CW || B_CCW) {
-    Serial.println("B toggle");
-  }
   userControl(B, B_brake, B_CW, B_CCW, B_TOGGLE);
-}
-
-void handleButtons() {
 }
 
 void userControl(Motor m, bool isBrake, bool isCW, bool isCCW, bool pressStopStby) {
@@ -95,6 +87,7 @@ void userControl(Motor m, bool isBrake, bool isCW, bool isCCW, bool pressStopStb
   if ((currentMode == MotorCCW || currentMode == MotorCW) && isBrake) {
     m == A ? motorABeforeBrake = currentMode : motorBBeforeBrake = currentMode;
     *t = MotorBrake;
+    motorShortBreak(m);
     return;
   }
 
@@ -102,41 +95,55 @@ void userControl(Motor m, bool isBrake, bool isCW, bool isCCW, bool pressStopStb
     case MotorStanby:
       if (pressStopStby) {
         *t = MotorStop;
+        motorStop(m);
       }
       break;
     case MotorStop:
       if (pressStopStby) {
         *t = MotorStanby;
+        motorStandBy(m);
       }
       if (isCW) {
         *t = MotorCW;
+        motorDirection(m, CW);
       }
       if (isCCW) {
         *t = MotorCCW;
+        motorDirection(m, CCW);
       }
       break;
     case MotorCCW:
       if (isCW) {
         *t = MotorCW;
+        motorDirection(m, CW);
         return;
       }
       if (pressStopStby) {
         *t = MotorStop;
+        motorStandBy(m);
       }
       break;
     case MotorCW:
       if (isCCW) {
         *t = MotorCCW;
+        motorDirection(m, CCW);
         return;
       }
       if (pressStopStby) {
         *t = MotorStop;
+        motorStandBy(m);
         return;
       }
       break;
     case MotorBrake:  //
       if (isBrake) return;
-      m == A ? motorA = motorABeforeBrake : motorB = motorBBeforeBrake;
+      if (m == A) {
+        motorA = motorABeforeBrake;
+        motorDirection(m, motorABeforeBrake == MotorCW ? CW : CCW);
+      } else {
+        motorB = motorBBeforeBrake;
+        motorDirection(m, motorBBeforeBrake == MotorCW ? CW : CCW);
+      }
       break;
   }
 }
@@ -177,9 +184,7 @@ void handleReadValue() {
 // convert motor state into human text
 void getMotorText(char* __s, Motor m) {
   int dutyA = map(m == A ? OCR0A : OCR0B, 0, 255, 0, 100);
-  snprintf(__s, 16, "%c: %3d%% %s",
-           m == A ? 'A' : 'B',
-           dutyA,
+  snprintf(__s, 16, "%c: %3d%% %s", m == A ? 'A' : 'B', dutyA,
            motorModeStr[m == A ? motorA : motorB]);
 }
 
