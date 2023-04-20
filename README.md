@@ -21,5 +21,5 @@
 ![image](https://user-images.githubusercontent.com/12003208/224769083-1418bfca-82c4-407b-8c72-7e1d650d0f1c.png)
 
 ## PCB
-![image](https://user-images.githubusercontent.com/12003208/230463711-172aa334-95bc-4bb5-83eb-de0c688e10cf.png)
+![image](https://user-images.githubusercontent.com/12003208/233440373-ee17c6c5-fe8e-4a05-99b4-95f6335ec3b9.png)
 
