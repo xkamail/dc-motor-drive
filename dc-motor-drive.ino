@@ -12,15 +12,15 @@ Schedular BtnTask;
 ezButton btn2(STOP_STBY_A);
 ezButton btn8(STOP_STBY_B);
 
-enum Motor {
+enum Motor : uint8_t {
   A,
   B,
 };
-enum Direction {
+enum Direction : uint8_t {
   CW,
   CCW,
 };
-enum MotorMode {
+enum MotorMode : uint8_t {
   MotorStanby,
   MotorStop,
   MotorCW,
@@ -44,7 +44,7 @@ volatile MotorMode motorBBeforeBrake;
 void setup() {
   DDRD = 0b01100011;   // input internal pull-up
   PORTD = 0b10011100;  // for motor A
-  DDRB = 0b110000;    // input internal pull-up
+  DDRB = 0b110000;     // input internal pull-up
   PORTB = 0b00001111;  // for motor B
   DDRC = 0b1100;       // PWM analog read amd A3, A2
   btn2.setDebounceTime(50);
@@ -61,24 +61,16 @@ void setup() {
   BtnTask.start();
 }
 
-unsigned long lastDebounceTime = 0;
-int lastButtonState = HIGH;
 
 void loop() {
   btn2.loop();
   btn8.loop();
-  LCDTask.check(updateLCD, 100);
-  PWMTask.check(handleReadValue, 100);
-  bool A_brake = !digitalRead(BRAKEA);
-  bool A_CW = !digitalRead(CW_A);
-  bool A_CCW = !digitalRead(CCW_A);
-  bool A_TOGGLE = btn2.isReleased();
-  userControl(A, A_brake, A_CW, A_CCW, A_TOGGLE);
-  bool B_brake = !digitalRead(BRAKEB);
-  bool B_CW = !digitalRead(CW_B);
-  bool B_CCW = !digitalRead(CCW_B);
-  bool B_TOGGLE = btn8.isReleased();
-  userControl(B, B_brake, B_CW, B_CCW, B_TOGGLE);
+  LCDTask.check(updateLCD, 200);  // 30Hz
+  PWMTask.check(handleReadValue, 300);
+
+  userControl(A, !digitalRead(BRAKEA), !digitalRead(CW_A), !digitalRead(CCW_A), btn2.isReleased());
+
+  userControl(B, !digitalRead(BRAKEB), !digitalRead(CW_B), !digitalRead(CCW_B), btn8.isReleased());
 }
 
 void userControl(Motor m, bool isBrake, bool isCW, bool isCCW, bool pressStopStby) {
@@ -169,12 +161,14 @@ void motorShortBreak(Motor m) {
 
 void handleReadValue() {
   if (motorA == MotorCCW || motorA == MotorCW) {
-    OCR0A = map(analogRead(PWMA), 0, 1023, 0, 255);
+    long x = map(analogRead(PWMA), 0, 1024, 0, 256);
+    OCR0A = x > 250 ? 0xFF : x;
   } else {
     OCR0A = 0;
   }
   if (motorB == MotorCCW || motorB == MotorCW) {
-    OCR0B = map(analogRead(PWMB), 0, 1023, 0, 255);
+    long x = map(analogRead(PWMB), 0, 1024, 0, 256);
+    OCR0B = x > 250 ? 0xFF : x;
   } else {
     OCR0B = 0;
   }
@@ -183,8 +177,8 @@ void handleReadValue() {
 
 // convert motor state into human text
 void getMotorText(char* __s, Motor m) {
-  int dutyA = map(m == A ? OCR0A : OCR0B, 0, 255, 0, 100);
-  snprintf(__s, 16, "%c: %3d%% %s", m == A ? 'A' : 'B', dutyA,
+  int duty = map(m == A ? OCR0A : OCR0B, 0, 0xFF, 0, 100);
+  snprintf(__s, 16, "%c: %3d%% %s", m == A ? 'A' : 'B', duty,
            motorModeStr[m == A ? motorA : motorB]);
 }
 
